@@ -11,12 +11,21 @@ public class Particle
     private double mass;
     public int id;
 
+    private double density = 1.;
+
     public Particle(double x, double y, double r)
     {
         this.x = x; this.y = y; this.r = r;
 
         // the mass of the particle
-        mass = Math.PI * (r * r);
+        mass = Math.PI * (r * r) * density;
+    }
+
+    public Particle(double x, double y, double r, double density)
+    {
+        this.x = x; this.y = y; this.r = r; this.density = density;
+
+        mass = Math.PI * (r * r) * density;
     }
 
     // adds a force
@@ -34,6 +43,9 @@ public class Particle
     // updating the particle
     public void Update(double dt)
     {
+        // accounting for gravity
+        //vY += 9.81 * dt;
+
         // moving the object
         x += vX * dt;  // (m/s) * (s) = m
         y += vY * dt;  // (m/s) * (s) = m

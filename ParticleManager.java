@@ -31,7 +31,7 @@ public class ParticleManager
 
         // getting the final velocities
         double v2f = finalEquationRight / finalEquationLeft;
-        double v1f = v2f - v1;
+        double v1f = v2f - v1 + v2;
 
         // returning the final velocities
         return new double[] {v1f, v2f};
@@ -99,11 +99,16 @@ public class ParticleManager
     // updates the particles
     public void Update(double dt)
     {
-        // looping through all the particles and updating them
-        for (Particle particle : particles) particle.Update(dt);
+        // micro stepping the physics for better accuracy
+        double dtNew = dt / 10;
+        for (int i = 0; i < 10; i++)
+        {
+            // looping through all the particles and updating them
+            for (Particle particle : particles) particle.Update(dtNew);
 
-        // looping through all the particles multiple times and repositioning them
-        for (int i = 0; i < 10; i++) for (Particle particle : particles) Reposition(particle);
+            // looping through all the particles multiple times and repositioning them
+            for (int j = 0; j < 10; j++) for (Particle particle : particles) Reposition(particle);
+        }
     }
 
     // adds a particle
