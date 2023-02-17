@@ -3,6 +3,11 @@ ID = 0  # the current particles id
 
 pygame.init()
 
+colSphere = ((-10, -10, 0), (-10, -10, 0))
+colNormalPos = ((0, 0, -10, -10), (0, 0, -10, -10))
+colHeadingPos = ((0, 0, -10, -10), (0, 0, -10, -10))
+colRefledPos = ((0, 0, -10, -10), (0, 0, -10, -10))
+
 
 class Particle:
     def __init__(self, x: float, y: float, r: float, density: float = 1) -> None:
@@ -79,6 +84,7 @@ class ParticleManager:
         return [v1f, v2f]
 
     def Reposition(self, particle: Particle) -> None:
+        global colSphere, colNormalPos, colHeadingPos, colRefledPos
         radius = particle.GetRadius()
 
         for otherParticle in self.__particles:
@@ -91,6 +97,11 @@ class ParticleManager:
                 radiusSum = radius + otherParticle.GetRadius()
                 
                 if distance < radiusSum:
+                    particleX = particle.GetX()
+                    particleY = particle.GetY()
+                    otherParticleX = otherParticle.GetX()
+                    otherParticleY = otherParticle.GetY()
+
                     halfDif = 0.5 * (radiusSum - distance)
 
                     scaledDifX = difX / distance * halfDif
@@ -118,26 +129,34 @@ class ParticleManager:
                             return 0
 
                     # the surface normal of the two spheres at the approximate point of collision (not completly correct)
-                    surfNormalX = difX / distance
-                    surfNormalY = difY / distance
-                    otherSurfNormalX = -difX / distance
-                    otherSurfNormalY = -difY / distance
+                    surfNormalX = -difX / distance
+                    surfNormalY = -difY / distance
+                    otherSurfNormalX = difX / distance
+                    otherSurfNormalY = difY / distance
 
                     # the magnitude of the velocities
                     velocityMagnitude = math.sqrt(v1x*v1x + v1y*v1y)
                     otherVelocityMagnitude = math.sqrt(v2x*v2x + v2y*v2y)
                     
                     # the direction of headings of the two spheres
-                    headingX = Div(v1x, velocityMagnitude)
-                    headingY = Div(v1y, velocityMagnitude)
-                    otherHeadingX = Div(v2x, otherVelocityMagnitude)
-                    otherHeadingY = Div(v2y, otherVelocityMagnitude)
+                    headingX = Div(-v1x, velocityMagnitude)
+                    headingY = Div(-v1y, velocityMagnitude)
+                    otherHeadingX = Div(-v2x, otherVelocityMagnitude)
+                    otherHeadingY = Div(-v2y, otherVelocityMagnitude)
 
-                    # fidning the reflected directions for the spheres        rd - (normal * 2) * (rd * normal)
-                    reflectedX = headingX - (surfNormalX * 2) * (headingX * surfNormalX)
-                    reflectedY = headingY - (surfNormalY * 2) * (headingY * surfNormalY)
-                    otherReflectedX = otherHeadingX - (otherSurfNormalX * 2) * (otherHeadingX * otherSurfNormalX)
-                    otherReflectedY = otherHeadingY - (otherSurfNormalY * 2) * (otherHeadingY * otherSurfNormalY)
+                    # fidning the reflected directions for the spheres        rd - (normal * 2) * (rd * normal) <- is wrong
+                    # c = a - (a.n)
+                    # b = n + c
+                    # n = surf norm, a = in going ray, b = out going ray
+                    # b = n + (a - a.n)
+                    
+                    dot = (headingX * surfNormalX + headingY * surfNormalY)
+                    reflectedX = surfNormalX + (headingX - dot)
+                    reflectedY = surfNormalY + (headingY - dot)
+
+                    otherDot = (otherHeadingX * otherSurfNormalX + otherHeadingY * otherSurfNormalY)
+                    otherReflectedX = otherSurfNormalX + (otherHeadingX - otherDot)
+                    otherReflectedY = otherSurfNormalY + (otherHeadingY - otherDot)
 
                     reflectedMagnitude = math.sqrt(reflectedX*reflectedX + reflectedY*reflectedY)
                     otherReflectedMagnitude = math.sqrt(otherReflectedX*otherReflectedX + otherReflectedY*otherReflectedY)
@@ -151,6 +170,11 @@ class ParticleManager:
                     newVY = finalVelocityMagnitude * Div(reflectedY, reflectedMagnitude)
                     otherNewVX = otherFinalVelocityMagnitude * Div(otherReflectedX, otherReflectedMagnitude)
                     otherNewVY = otherFinalVelocityMagnitude * Div(otherReflectedY, otherReflectedMagnitude)
+
+                    colSphere = ((particleX, particleY, particle.GetRadius()), (otherParticleX, otherParticleY, otherParticle.GetRadius()))
+                    colNormalPos = ((surfNormalX, surfNormalY, particleX, particleY), (otherSurfNormalX, otherSurfNormalY, otherParticleX, otherParticleY))
+                    colHeadingPos = ((headingX, headingY, particleX, particleY), (otherHeadingX, otherHeadingY, otherParticleX, otherParticleY))
+                    colRefledPos = ((reflectedX, reflectedY, particleX, particleY), (otherReflectedX, otherReflectedY, otherParticleX, otherParticleY))
 
                     # setting the new velocities
                     particle     .SetVelocity(newVX, newVY)
@@ -183,13 +207,13 @@ particleManager = ParticleManager()
 particleManager.AddParticle(Particle(5 , 15, 10, 10000000.))
 particleManager.AddParticle(Particle(80, 15, 10, 10000000.))
 
-particle = Particle(15, 15, 1, 0.5)
-particle.AddForce(10, 0.1, 3)
+particle = Particle(20, 15, 1, 0.5)
+particle.AddForce(10, 0.5, 3)
 particleManager.AddParticle(particle)
 
-particle = Particle(25, 15, 1, 0.5)
-particle.AddForce(-10, 0.1, 3)
-particleManager.AddParticle(particle)
+#particle = Particle(25, 15, 1, 0.5)
+#particle.AddForce(-10, 0., 3)
+#particleManager.AddParticle(particle)
 
 
 dt = 0
@@ -212,7 +236,16 @@ while running:
     for particle in particles:
         pygame.draw.circle(screen, ((0, 0, 0)), (particle.GetX() * 10, particle.GetY() * 10), particle.GetRadius() * 10)
 
-    particleManager.Update(dt * 1.5)
+    particleManager.Update(dt * 1.5 * 0.25)
+
+    pygame.draw.circle(screen, (255, 0, 0), (colSphere[0][0] * 10, colSphere[0][1] * 10), colSphere[0][2] * 10, 2)
+    pygame.draw.circle(screen, (0, 255, 0), (colSphere[1][0] * 10, colSphere[1][1] * 10), colSphere[1][2] * 10, 2)
+    pygame.draw.line(screen, (175, 0, 0), (colNormalPos[0][2] * 10, colNormalPos[0][3] * 10), ((colNormalPos[0][2] + colNormalPos[0][0] * 2) * 10, (colNormalPos[0][3] + colNormalPos[0][1] * 2) * 10))
+    pygame.draw.line(screen, (0, 175, 0), (colNormalPos[1][2] * 10, colNormalPos[1][3] * 10), ((colNormalPos[1][2] + colNormalPos[1][0] * 2) * 10, (colNormalPos[1][3] + colNormalPos[1][1] * 2) * 10))
+    pygame.draw.line(screen, (0, 0, 175), (colHeadingPos[0][2] * 10, colHeadingPos[0][3] * 10), ((colHeadingPos[0][2] + colHeadingPos[0][0] * 2) * 10, (colHeadingPos[0][3] + colHeadingPos[0][1] * 2) * 10))
+    pygame.draw.line(screen, (0, 0, 175), (colHeadingPos[1][2] * 10, colHeadingPos[1][3] * 10), ((colHeadingPos[1][2] + colHeadingPos[1][0] * 2) * 10, (colHeadingPos[1][3] + colHeadingPos[1][1] * 2) * 10))
+    pygame.draw.line(screen, (175, 0, 0), (colRefledPos[0][2] * 10, colRefledPos[0][3] * 10), ((colRefledPos[0][2] + colRefledPos[0][0] * 2) * 10, (colRefledPos[0][3] + colRefledPos[0][1] * 2) * 10))
+    pygame.draw.line(screen, (175, 0, 0), (colRefledPos[1][2] * 10, colRefledPos[1][3] * 10), ((colRefledPos[1][2] + colRefledPos[1][0] * 2) * 10, (colRefledPos[1][3] + colRefledPos[1][1] * 2) * 10))
 
     pygame.display.update()
 
